@@ -174,6 +174,8 @@ class FacebookBridge extends BridgeAbstract {
 		} else {
 			$header = array();
 		}
+		
++		$header[] = 'Cookie: c_user=xxxx; xs=yyyy;';
 
 		$touchURI = str_replace(
 			'https://www.facebook',
@@ -559,6 +561,8 @@ EOD;
 			} else {
 				$header = array();
 			}
+			
++			$header[] = 'Cookie: c_user=xxxx; xs=yyyy;';
 
 			$html = getSimpleHTMLDOM($this->getURI(), $header)
 				or returnServerError('No results for this query.');
