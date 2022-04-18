@@ -41,6 +41,13 @@ abstract class BridgeAbstract implements BridgeInterface {
 	const URI = '';
 
 	/**
+	 * Donation URI to the site the bridge is intended to be used for.
+	 *
+	 * Use {@see BridgeAbstract::getDonationURI()} to read this parameter
+	 */
+	const DONATION_URI = '';
+
+	/**
 	 * A brief description of what the bridge can do
 	 *
 	 * Use {@see BridgeAbstract::getDescription()} to read this parameter
@@ -74,6 +81,21 @@ abstract class BridgeAbstract implements BridgeInterface {
 	 * Use {@see BridgeAbstract::getParameters()} to read this parameter
 	 */
 	const PARAMETERS = array();
+
+	/**
+	 * Test cases for detectParameters for the bridge
+	 */
+	const TEST_DETECT_PARAMETERS = array();
+
+	/**
+	 * This is a convenient const for the limit option in bridge contexts.
+	 * Can be inlined and modified if necessary.
+	 */
+	protected const LIMIT = [
+		'name'          => 'Limit',
+		'type'          => 'number',
+		'title'         => 'Maximum number of items to return',
+	];
 
 	/**
 	 * Holds the list of items collected by the bridge
@@ -337,6 +359,11 @@ abstract class BridgeAbstract implements BridgeInterface {
 	}
 
 	/** {@inheritdoc} */
+	public function getDonationURI(){
+		return static::DONATION_URI;
+	}
+
+	/** {@inheritdoc} */
 	public function getCacheTimeout(){
 		return static::CACHE_TIMEOUT;
 	}
@@ -352,5 +379,38 @@ abstract class BridgeAbstract implements BridgeInterface {
 		} else {
 			return null;
 		}
+	}
+
+	/**
+	 * Loads a cached value for the specified key
+	 *
+	 * @param string $key Key name
+	 * @param int $duration Cache duration (optional, default: 24 hours)
+	 * @return mixed Cached value or null if the key doesn't exist or has expired
+	 */
+	protected function loadCacheValue($key, $duration = 86400){
+		$cacheFac = new CacheFactory();
+		$cacheFac->setWorkingDir(PATH_LIB_CACHES);
+		$cache = $cacheFac->create(Configuration::getConfig('cache', 'type'));
+		$cache->setScope(get_called_class());
+		$cache->setKey($key);
+		if($cache->getTime() < time() - $duration)
+			return null;
+		return $cache->loadData();
+	}
+
+	/**
+	 * Stores a value to cache with the specified key
+	 *
+	 * @param string $key Key name
+	 * @param mixed $value Value to cache
+	 */
+	protected function saveCacheValue($key, $value){
+		$cacheFac = new CacheFactory();
+		$cacheFac->setWorkingDir(PATH_LIB_CACHES);
+		$cache = $cacheFac->create(Configuration::getConfig('cache', 'type'));
+		$cache->setScope(get_called_class());
+		$cache->setKey($key);
+		$cache->saveData($value);
 	}
 }

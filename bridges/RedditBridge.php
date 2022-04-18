@@ -15,6 +15,24 @@ class RedditBridge extends BridgeAbstract {
 				'type' => 'number',
 				'exampleValue' => 100,
 				'title' => 'Filter out posts with lower score'
+			),
+			'd' => array(
+				'name' => 'Sort By',
+				'type' => 'list',
+				'title' => 'Sort by new, hot, top or relevancy',
+				'values' => array(
+					'Hot' => 'hot',
+					'Relevance' => 'relevance',
+					'New' => 'new',
+					'Top' => 'top'
+				),
+				'defaultValue' => 'Hot'
+			),
+			'search' => array(
+				'name' => 'Keyword search',
+				'required' => false,
+				'exampleValue' => 'cats, dogs',
+				'title' => 'Keyword search, separated by commas'
 			)
 		),
 		'single' => array(
@@ -37,6 +55,7 @@ class RedditBridge extends BridgeAbstract {
 			'u' => array(
 				'name' => 'User',
 				'required' => true,
+				'exampleValue' => 'shwikibot',
 				'title' => 'User name'
 			),
 			'comments' => array(
@@ -86,6 +105,7 @@ class RedditBridge extends BridgeAbstract {
 
 		$user = false;
 		$comments = false;
+		$section = $this->getInput('d');
 
 		switch ($this->queriedContext) {
 			case 'single':
@@ -101,11 +121,24 @@ class RedditBridge extends BridgeAbstract {
 				break;
 		}
 
+		if(!($this->getInput('search') === '')) {
+			$keywords = $this->getInput('search');
+			$keywords = str_replace(array(',', ' '), '%20', $keywords);
+			$keywords = $keywords . '%20';
+		} else {
+			$keywords = '';
+		}
+
 		foreach ($subreddits as $subreddit) {
 			$name = trim($subreddit);
-
-			$values = getContents(self::URI . ($user ? '/user/' : '/r/') . $name . '.json')
-			or returnServerError('Unable to fetch posts!');
+			$values = getContents(self::URI
+					. '/search.json?q='
+					. $keywords
+					. ($user ? 'author%3A' : 'subreddit%3A')
+					. $name
+					. '&sort='
+					. $this->getInput('d')
+					. '&include_over_18=on');
 			$decodedValues = json_decode($values);
 
 			foreach ($decodedValues->data->children as $post) {
@@ -186,7 +219,7 @@ class RedditBridge extends BridgeAbstract {
 						$id = $media->media_id;
 						$type = $data->media_metadata->$id->m == 'image/gif' ? 'gif' : 'u';
 						$src = $data->media_metadata->$id->s->$type;
-						$images[] = '<figure><img src="' . $src . '"/></figure>';
+						$images[] = '<figure><img src="' . $src . '"/></figure><br>';
 					}
 
 					$item['content'] = implode('', $images);
@@ -231,6 +264,10 @@ class RedditBridge extends BridgeAbstract {
 				$this->items[] = $item;
 			}
 		}
+		// Sort the order to put the latest posts first, even for mixed subreddits
+		usort($this->items, function($a, $b) {
+			return $a['timestamp'] < $b['timestamp'];
+		});
 	}
 
 	private function encodePermalink($link) {
